@@ -8,7 +8,7 @@ import {
   Switch,
   Alert,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { Settings as SettingsIcon, Key, Server, Eye, EyeOff, CheckCircle, Coins } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
@@ -185,6 +185,11 @@ function ExchangeConfigCard({
   const [apiKey, setApiKey] = useState(config.apiKey);
   const [apiSecret, setApiSecret] = useState(config.apiSecret);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setApiKey(config.apiKey);
+    setApiSecret(config.apiSecret);
+  }, [config.apiKey, config.apiSecret]);
 
   const handleSave = () => {
     onUpdateConfig(config.name, { apiKey, apiSecret });

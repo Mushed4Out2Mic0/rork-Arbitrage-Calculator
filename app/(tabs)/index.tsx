@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
 import { TickerData } from '@/types/exchanges';
 import { REFRESH_INTERVAL } from '@/constants/exchanges';
 import { Stack } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { trpcClient } from '@/lib/trpc';
 import { findTopArbitrageOpportunities } from '@/utils/arbitrage';
 import { TickerCard } from '@/components/market/TickerCard';
@@ -14,33 +14,71 @@ import { ExecutionCostCard } from '@/components/market/ExecutionCostCard';
 import { ArbitrageOpportunitiesCard } from '@/components/market/ArbitrageOpportunitiesCard';
 
 export default function MarketScreen() {
+  const queryClient = useQueryClient();
   const { getEnabledConfigs, globalMode, getEnabledCryptoPairs } = useExchange();
   const enabledConfigs = getEnabledConfigs();
   const enabledPairs = getEnabledCryptoPairs();
+
+  const queryKeys = useMemo(
+    () => enabledConfigs.flatMap((config) =>
+      enabledPairs.map((pair) => ['ticker', config.name, config.mode, pair.symbol])
+    ),
+    [enabledConfigs, enabledPairs]
+  );
+
+  useEffect(() => {
+    const allTickerKeys = queryClient.getQueryCache().findAll({
+      predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'ticker'
+    });
+
+    allTickerKeys.forEach((query) => {
+      const isActive = queryKeys.some(
+        (key) => JSON.stringify(key) === JSON.stringify(query.queryKey)
+      );
+      
+      if (!isActive) {
+        console.log('[Cleanup] Removing inactive query:', query.queryKey);
+        queryClient.removeQueries({ queryKey: query.queryKey });
+      }
+    });
+  }, [queryKeys, queryClient]);
 
   const queries = useQueries({
     queries: enabledConfigs.flatMap((config) =>
       enabledPairs.map((pair) => ({
         queryKey: ['ticker', config.name, config.mode, pair.symbol],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
           console.log(`[Query] Fetching ${config.name} ${pair.symbol}`);
-          const result = await trpcClient.exchanges.ticker.query({
-            exchange: config.name,
-            mode: config.mode,
-            pairSymbol: pair.symbol,
-          });
-          console.log(`[Query] Received ${config.name} ${pair.symbol}:`, result.bidPrice, result.askPrice);
-          return result;
+          
+          if (signal?.aborted) {
+            throw new Error('Query aborted');
+          }
+
+          try {
+            const result = await trpcClient.exchanges.ticker.query({
+              exchange: config.name,
+              mode: config.mode,
+              pairSymbol: pair.symbol,
+            });
+            console.log(`[Query] Received ${config.name} ${pair.symbol}:`, result.bidPrice, result.askPrice);
+            return result;
+          } catch (error) {
+            if (signal?.aborted) {
+              throw new Error('Query aborted');
+            }
+            throw error;
+          }
         },
         refetchInterval: REFRESH_INTERVAL,
         refetchIntervalInBackground: true,
-        retry: 1,
-        retryDelay: 2000,
+        retry: 2,
+        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 5000),
         staleTime: 0,
         gcTime: 1000,
         networkMode: 'always' as const,
         refetchOnMount: 'always' as const,
         refetchOnWindowFocus: true,
+        enabled: config.enabled && pair.enabled,
       }))
     ),
   });
@@ -72,23 +110,32 @@ export default function MarketScreen() {
     [tickersByPair]
   );
 
-  const errors = queries
-    .map((query, queryIndex) => {
-      if (!query.isError) return null;
-      
-      const configIndex = Math.floor(queryIndex / enabledPairs.length);
-      const pairIndex = queryIndex % enabledPairs.length;
-      const config = enabledConfigs[configIndex];
-      const pair = enabledPairs[pairIndex];
-      
-      return {
-        key: `error-${config?.name || queryIndex}-${pair?.symbol || queryIndex}`,
-        exchange: config?.displayName || 'Exchange',
-        symbol: pair?.symbol || '',
-        message: (query.error as Error)?.message || 'Connection failed',
-      };
-    })
-    .filter(Boolean);
+  const queriesData = queries.map(q => ({
+    isError: q.isError,
+    error: q.error,
+  }));
+
+  const errors = useMemo(() => {
+    return queriesData
+      .map((query, queryIndex) => {
+        if (!query.isError || !query.error) return null;
+        
+        const configIndex = Math.floor(queryIndex / enabledPairs.length);
+        const pairIndex = queryIndex % enabledPairs.length;
+        const config = enabledConfigs[configIndex];
+        const pair = enabledPairs[pairIndex];
+        
+        if (!config || !pair) return null;
+        
+        return {
+          key: `error-${config.name}-${pair.symbol}`,
+          exchange: config.displayName,
+          symbol: pair.symbol,
+          message: (query.error as Error)?.message || 'Connection failed',
+        };
+      })
+      .filter((error): error is NonNullable<typeof error> => error !== null);
+  }, [queriesData, enabledConfigs, enabledPairs]);
 
   return (
     <>
@@ -173,14 +220,14 @@ export default function MarketScreen() {
 
             <ArbitrageOpportunitiesCard opportunities={topOpportunities} />
 
-            {errors.map((error) => (
-              <View key={error!.key} style={styles.errorCard}>
+            {errors.length > 0 && errors.map((error) => (
+              <View key={error.key} style={styles.errorCard}>
                 <AlertCircle size={20} color="#EF4444" />
                 <View style={styles.errorTextContainer}>
                   <Text style={styles.errorExchange}>
-                    [{error!.exchange}] {error!.symbol}
+                    [{error.exchange}] {error.symbol}
                   </Text>
-                  <Text style={styles.errorText}>{error!.message}</Text>
+                  <Text style={styles.errorText}>{error.message}</Text>
                 </View>
               </View>
             ))}

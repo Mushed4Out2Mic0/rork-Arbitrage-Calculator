@@ -130,6 +130,8 @@ export const SYMBOL_MAPPING: Record<ExchangeName, Record<string, string>> = {
 
 export const REFRESH_INTERVAL = 5000;
 
+export const TRADE_AMOUNT = 0.1;
+
 export const EXCHANGE_TRADING_FEES: Record<ExchangeName, { maker: number; taker: number }> = {
   binance: { maker: 0.001, taker: 0.001 },
   bybit: { maker: 0.001, taker: 0.001 },

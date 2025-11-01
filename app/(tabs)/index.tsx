@@ -1,12 +1,10 @@
 import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
 import { TickerData } from '@/types/exchanges';
-import { REFRESH_INTERVAL } from '@/constants/exchanges';
 import { Stack } from 'expo-router';
-import { useMemo, useEffect } from 'react';
-import { trpcClient } from '@/lib/trpc';
+import { useMemo } from 'react';
+import { trpc } from '@/lib/trpc';
 import { findTopArbitrageOpportunities } from '@/utils/arbitrage';
 import { TickerCard } from '@/components/market/TickerCard';
 import { ComparisonCard } from '@/components/market/ComparisonCard';
@@ -14,85 +12,46 @@ import { ExecutionCostCard } from '@/components/market/ExecutionCostCard';
 import { ArbitrageOpportunitiesCard } from '@/components/market/ArbitrageOpportunitiesCard';
 
 export default function MarketScreen() {
-  const queryClient = useQueryClient();
   const { getEnabledConfigs, globalMode, getEnabledCryptoPairs } = useExchange();
   const enabledConfigs = getEnabledConfigs();
   const enabledPairs = getEnabledCryptoPairs();
 
-  const queryKeys = useMemo(
-    () => enabledConfigs.flatMap((config) =>
-      enabledPairs.map((pair) => ['ticker', config.name, config.mode, pair.symbol])
-    ),
-    [enabledConfigs, enabledPairs]
+  const enabledExchanges = useMemo(
+    () => enabledConfigs.map((c) => c.name as "kraken" | "coinbase" | "binance" | "bybit"),
+    [enabledConfigs]
+  );
+  
+  const symbols = useMemo(
+    () => enabledPairs.map((p) => p.symbol),
+    [enabledPairs]
   );
 
-  useEffect(() => {
-    const allTickerKeys = queryClient.getQueryCache().findAll({
-      predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'ticker'
-    });
-
-    allTickerKeys.forEach((query) => {
-      const isActive = queryKeys.some(
-        (key) => JSON.stringify(key) === JSON.stringify(query.queryKey)
-      );
-      
-      if (!isActive) {
-        console.log('[Cleanup] Removing inactive query:', query.queryKey);
-        queryClient.removeQueries({ queryKey: query.queryKey });
-      }
-    });
-  }, [queryKeys, queryClient]);
-
-  const queries = useQueries({
-    queries: enabledConfigs.flatMap((config) =>
-      enabledPairs.map((pair) => ({
-        queryKey: ['ticker', config.name, config.mode, pair.symbol],
-        queryFn: async ({ signal }) => {
-          console.log(`[Query] Fetching ${config.name} ${pair.symbol}`);
-          
-          if (signal?.aborted) {
-            throw new Error('Query aborted');
-          }
-
-          try {
-            const result = await trpcClient.exchanges.ticker.query({
-              exchange: config.name,
-              mode: config.mode,
-              pairSymbol: pair.symbol,
-            });
-            console.log(`[Query] Received ${config.name} ${pair.symbol}:`, result.bidPrice, result.askPrice);
-            return result;
-          } catch (error) {
-            if (signal?.aborted) {
-              throw new Error('Query aborted');
-            }
-            throw error;
-          }
-        },
-        refetchInterval: REFRESH_INTERVAL,
-        refetchIntervalInBackground: true,
-        retry: 2,
-        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 5000),
-        staleTime: 0,
-        gcTime: 1000,
-        networkMode: 'always' as const,
-        refetchOnMount: 'always' as const,
-        refetchOnWindowFocus: true,
-        enabled: config.enabled && pair.enabled,
-      }))
-    ),
-  });
-
-  const isAnyLoading = queries.some((q) => q.isLoading);
-  const isAnyRefetching = queries.some((q) => q.isRefetching);
+  const { data, isFetching, isLoading, refetch } = trpc.exchanges.ticker.useQuery(
+    { exchanges: enabledExchanges, symbols },
+    { 
+      enabled: enabledExchanges.length > 0 && symbols.length > 0,
+    }
+  );
 
   const handleRefresh = () => {
-    queries.forEach((q) => q.refetch());
+    refetch();
   };
 
-  const tickers = queries
-    .map((q) => q.data)
-    .filter((data): data is TickerData => data !== undefined);
+  const tickers: TickerData[] = useMemo(() => {
+    if (!data?.results) return [];
+    
+    return data.results
+      .filter((r: any) => !r.error)
+      .map((r: any) => ({
+        exchange: r.exchange,
+        symbol: r.symbol,
+        bidPrice: String(r.bid),
+        askPrice: String(r.ask),
+        bidQty: '0',
+        askQty: '0',
+        timestamp: r.ts,
+      }));
+  }, [data]);
 
   const tickersByPair = useMemo(() => {
     const grouped: Record<string, TickerData[]> = {};
@@ -110,32 +69,18 @@ export default function MarketScreen() {
     [tickersByPair]
   );
 
-  const queriesData = queries.map(q => ({
-    isError: q.isError,
-    error: q.error,
-  }));
-
   const errors = useMemo(() => {
-    return queriesData
-      .map((query, queryIndex) => {
-        if (!query.isError || !query.error) return null;
-        
-        const configIndex = Math.floor(queryIndex / enabledPairs.length);
-        const pairIndex = queryIndex % enabledPairs.length;
-        const config = enabledConfigs[configIndex];
-        const pair = enabledPairs[pairIndex];
-        
-        if (!config || !pair) return null;
-        
-        return {
-          key: `error-${config.name}-${pair.symbol}`,
-          exchange: config.displayName,
-          symbol: pair.symbol,
-          message: (query.error as Error)?.message || 'Connection failed',
-        };
-      })
-      .filter((error): error is NonNullable<typeof error> => error !== null);
-  }, [queriesData, enabledConfigs, enabledPairs]);
+    if (!data?.results) return [];
+    
+    return data.results
+      .filter((r: any) => r.error)
+      .map((r: any, idx: number) => ({
+        key: `error-${r.exchange}-${r.symbol}-${idx}`,
+        exchange: r.exchange,
+        symbol: r.symbol,
+        message: r.error,
+      }));
+  }, [data]);
 
   return (
     <>
@@ -167,7 +112,7 @@ export default function MarketScreen() {
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={isAnyRefetching && !isAnyLoading} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={isFetching && !isLoading} onRefresh={handleRefresh} />
         }
       >
         <View style={styles.header}>
@@ -187,7 +132,7 @@ export default function MarketScreen() {
           )}
         </View>
 
-        {isAnyLoading && tickers.length === 0 ? (
+        {isLoading && tickers.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#3B82F6" />
             <Text style={styles.loadingText}>Loading market data...</Text>
@@ -234,7 +179,7 @@ export default function MarketScreen() {
           </>
         )}
 
-        {isAnyRefetching && !isAnyLoading && (
+        {isFetching && !isLoading && (
           <View style={styles.refreshIndicator}>
             <RefreshCw size={16} color="#6B7280" />
             <Text style={styles.refreshText}>Updating...</Text>

@@ -8,7 +8,18 @@ import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchInterval: 5000,
+      refetchOnWindowFocus: false,
+      staleTime: 2_000,
+      gcTime: 60_000,
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (

@@ -2,60 +2,51 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const WEB_STORAGE_PREFIX = 'crypto_exchange_';
+const isWeb = Platform.OS === 'web';
 
 export const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
+    if (!value) return;
     console.log(`[SecureStorage] Setting ${key}`);
-    if (Platform.OS === 'web') {
-      try {
+    
+    try {
+      if (isWeb) {
         localStorage.setItem(WEB_STORAGE_PREFIX + key, value);
-      } catch (error) {
-        console.error('[SecureStorage] Web storage error:', error);
-        throw error;
-      }
-    } else {
-      try {
+      } else {
         await SecureStore.setItemAsync(key, value);
-      } catch (error) {
-        console.error('[SecureStorage] Secure store error:', error);
-        throw error;
       }
+    } catch (error) {
+      console.error('[SecureStorage] Error setting item:', error);
+      throw error;
     }
   },
 
   async getItem(key: string): Promise<string | null> {
     console.log(`[SecureStorage] Getting ${key}`);
-    if (Platform.OS === 'web') {
-      try {
+    
+    try {
+      if (isWeb) {
         return localStorage.getItem(WEB_STORAGE_PREFIX + key);
-      } catch (error) {
-        console.error('[SecureStorage] Web storage error:', error);
-        return null;
-      }
-    } else {
-      try {
+      } else {
         return await SecureStore.getItemAsync(key);
-      } catch (error) {
-        console.error('[SecureStorage] Secure store error:', error);
-        return null;
       }
+    } catch (error) {
+      console.error('[SecureStorage] Error getting item:', error);
+      return null;
     }
   },
 
   async deleteItem(key: string): Promise<void> {
     console.log(`[SecureStorage] Deleting ${key}`);
-    if (Platform.OS === 'web') {
-      try {
+    
+    try {
+      if (isWeb) {
         localStorage.removeItem(WEB_STORAGE_PREFIX + key);
-      } catch (error) {
-        console.error('[SecureStorage] Web storage error:', error);
-      }
-    } else {
-      try {
+      } else {
         await SecureStore.deleteItemAsync(key);
-      } catch (error) {
-        console.error('[SecureStorage] Secure store error:', error);
       }
+    } catch (error) {
+      console.error('[SecureStorage] Error deleting item:', error);
     }
   },
 };

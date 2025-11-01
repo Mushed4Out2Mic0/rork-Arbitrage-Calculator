@@ -2,11 +2,12 @@ import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator }
 import { useQueries } from '@tanstack/react-query';
 import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
-import { fetchExchangeTicker, calculateSpread, calculateSpreadPercentage } from '@/services/exchangeApi';
+import { calculateSpread, calculateSpreadPercentage } from '@/services/exchangeApi';
 import { TickerData, ExchangeName } from '@/types/exchanges';
 import { REFRESH_INTERVAL, EXCHANGE_TRADING_FEES } from '@/constants/exchanges';
 import { Stack } from 'expo-router';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { trpcClient } from '@/lib/trpc';
 
 interface CrossExchangeDeviation {
   timestamp: number;
@@ -45,7 +46,11 @@ export default function MarketScreen() {
         queryFn: async () => {
           const fetchTime = new Date().toLocaleTimeString();
           console.log(`[Query] Fetching ${config.name} ${pair.symbol} at ${fetchTime}`);
-          const result = await fetchExchangeTicker(config, pair.symbol);
+          const result = await trpcClient.exchanges.ticker.query({
+            exchange: config.name,
+            mode: config.mode,
+            pairSymbol: pair.symbol,
+          });
           console.log(`[Query] Received ${config.name} ${pair.symbol} at ${fetchTime}:`, result.bidPrice, result.askPrice);
           return result;
         },

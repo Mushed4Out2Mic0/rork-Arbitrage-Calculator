@@ -103,7 +103,11 @@ export async function fetchKrakenTicker(
     const data: KrakenTickerResponse = await response.json();
     
     if (data.error && data.error.length > 0) {
-      throw new Error(`Kraken: ${data.error.join(', ')}`);
+      const errorMsg = data.error.join(', ');
+      if (errorMsg.includes('EService:Unavailable') || errorMsg.includes('Unavailable')) {
+        throw new Error(`Kraken: Service temporarily unavailable. Please try again later.`);
+      }
+      throw new Error(`Kraken: ${errorMsg}`);
     }
 
     const tickerKey = Object.keys(data.result)[0];

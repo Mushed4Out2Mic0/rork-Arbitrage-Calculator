@@ -10,12 +10,14 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { Settings as SettingsIcon, Key, Server, Eye, EyeOff, CheckCircle, Coins } from 'lucide-react-native';
+import { Settings as SettingsIcon, Key, Server, Eye, EyeOff, CheckCircle, Coins, Moon, Sun } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { ExchangeConfig } from '@/types/exchanges';
 
 export default function SettingsScreen() {
   const { configs, globalMode, setMode, updateExchangeConfig, cryptoPairs, updateCryptoPairConfig } = useExchange();
+  const { theme, mode: themeMode, toggleTheme } = useTheme();
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
 
   const handleToggleMode = (value: boolean) => {
@@ -38,22 +40,76 @@ export default function SettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Settings' }} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
-          <SettingsIcon size={32} color="#3B82F6" strokeWidth={2.5} />
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Configure exchanges and API keys</Text>
+          <SettingsIcon size={32} color={theme.tint} strokeWidth={2.5} />
+          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Configure exchanges and API keys</Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Server size={20} color="#6B7280" />
-            <Text style={styles.sectionTitle}>Environment Mode</Text>
+            {themeMode === 'light' ? (
+              <Sun size={20} color={theme.textSecondary} />
+            ) : (
+              <Moon size={20} color={theme.textSecondary} />
+            )}
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Appearance</Text>
           </View>
-          <View style={styles.modeContainer}>
+          <View style={[styles.modeContainer, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
             <View style={styles.modeInfo}>
-              <Text style={styles.modeLabel}>Sandbox Mode</Text>
-              <Text style={styles.modeDescription}>
+              <Text style={[styles.modeLabel, { color: theme.text }]}>Light Mode</Text>
+              <Text style={[styles.modeDescription, { color: theme.textSecondary }]}>
+                Bright theme for daytime
+              </Text>
+            </View>
+            <Switch
+              value={themeMode === 'dark'}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#F59E0B', true: '#6366F1' }}
+              thumbColor="#FFFFFF"
+            />
+            <View style={styles.modeInfo}>
+              <Text style={[styles.modeLabel, { color: theme.text }]}>Dark Mode</Text>
+              <Text style={[styles.modeDescription, { color: theme.textSecondary }]}>
+                Easy on the eyes at night
+              </Text>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.modeIndicator,
+              { 
+                backgroundColor: themeMode === 'dark' ? theme.infoLight : theme.warningLight,
+                borderColor: themeMode === 'dark' ? theme.infoDark : theme.warningDark,
+              },
+            ]}
+          >
+            {themeMode === 'light' ? (
+              <Sun size={16} color={theme.warningDark} />
+            ) : (
+              <Moon size={16} color={theme.infoDark} />
+            )}
+            <Text
+              style={[
+                styles.modeIndicatorText,
+                { color: themeMode === 'dark' ? theme.infoDark : theme.warningDark },
+              ]}
+            >
+              Currently using {themeMode.toUpperCase()} theme
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Server size={20} color={theme.textSecondary} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Environment Mode</Text>
+          </View>
+          <View style={[styles.modeContainer, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
+            <View style={styles.modeInfo}>
+              <Text style={[styles.modeLabel, { color: theme.text }]}>Sandbox Mode</Text>
+              <Text style={[styles.modeDescription, { color: theme.textSecondary }]}>
                 Use testnet/sandbox APIs for testing
               </Text>
             </View>
@@ -64,8 +120,8 @@ export default function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
             <View style={styles.modeInfo}>
-              <Text style={styles.modeLabel}>Live Mode</Text>
-              <Text style={styles.modeDescription}>
+              <Text style={[styles.modeLabel, { color: theme.text }]}>Live Mode</Text>
+              <Text style={[styles.modeDescription, { color: theme.textSecondary }]}>
                 Use production APIs with real data
               </Text>
             </View>
@@ -73,19 +129,20 @@ export default function SettingsScreen() {
           <View
             style={[
               styles.modeIndicator,
-              globalMode === 'live' ? styles.modeIndicatorLive : styles.modeIndicatorSandbox,
+              {
+                backgroundColor: globalMode === 'live' ? theme.successLight : theme.warningLight,
+                borderColor: globalMode === 'live' ? theme.successDark : theme.warningDark,
+              },
             ]}
           >
             <CheckCircle
               size={16}
-              color={globalMode === 'live' ? '#10B981' : '#F59E0B'}
+              color={globalMode === 'live' ? theme.successDark : theme.warningDark}
             />
             <Text
               style={[
                 styles.modeIndicatorText,
-                globalMode === 'live'
-                  ? styles.modeIndicatorTextLive
-                  : styles.modeIndicatorTextSandbox,
+                { color: globalMode === 'live' ? theme.successDark : theme.warningDark },
               ]}
             >
               Currently in {globalMode.toUpperCase()} mode
@@ -95,24 +152,24 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Coins size={20} color="#6B7280" />
-            <Text style={styles.sectionTitle}>Cryptocurrency Pairs</Text>
+            <Coins size={20} color={theme.textSecondary} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Cryptocurrency Pairs</Text>
           </View>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
             Select up to 3 cryptocurrency pairs to monitor. Only the first 3 enabled pairs will be tracked.
           </Text>
           
-          <View style={styles.cryptoPairsContainer}>
+          <View style={[styles.cryptoPairsContainer, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
             {cryptoPairs.map((pair) => {
               const enabledCount = cryptoPairs.filter(p => p.enabled).length;
               const canEnable = !pair.enabled && enabledCount < 3;
               const canDisable = pair.enabled;
               
               return (
-                <View key={pair.name} style={styles.cryptoPairRow}>
+                <View key={pair.name} style={[styles.cryptoPairRow, { borderBottomColor: theme.borderLight }]}>
                   <View style={styles.cryptoPairInfo}>
-                    <Text style={styles.cryptoPairName}>{pair.displayName}</Text>
-                    <Text style={styles.cryptoPairSymbol}>{pair.symbol}</Text>
+                    <Text style={[styles.cryptoPairName, { color: theme.text }]}>{pair.displayName}</Text>
+                    <Text style={[styles.cryptoPairSymbol, { color: theme.textSecondary }]}>{pair.symbol}</Text>
                   </View>
                   <Switch
                     value={pair.enabled}
@@ -132,8 +189,8 @@ export default function SettingsScreen() {
             })}
           </View>
           
-          <View style={styles.pairLimitInfo}>
-            <Text style={styles.pairLimitText}>
+          <View style={[styles.pairLimitInfo, { backgroundColor: theme.infoLight, borderColor: theme.infoDark }]}>
+            <Text style={[styles.pairLimitText, { color: theme.infoDark }]}>
               {cryptoPairs.filter(p => p.enabled).length} / 3 pairs enabled
             </Text>
           </View>
@@ -141,10 +198,10 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Key size={20} color="#6B7280" />
-            <Text style={styles.sectionTitle}>Exchange Configuration</Text>
+            <Key size={20} color={theme.textSecondary} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Exchange Configuration</Text>
           </View>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
             Configure API keys for each exchange. Keys are stored securely on your device.
           </Text>
 
@@ -160,7 +217,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: theme.textTertiary }]}>
             API keys are encrypted and stored locally on your device
           </Text>
         </View>
@@ -182,6 +239,7 @@ function ExchangeConfigCard({
   onToggleShowApiKey,
   onUpdateConfig,
 }: ExchangeConfigCardProps) {
+  const { theme } = useTheme();
   const [apiKey, setApiKey] = useState(config.apiKey);
   const [apiSecret, setApiSecret] = useState(config.apiSecret);
   const [isEditing, setIsEditing] = useState(false);
@@ -203,20 +261,23 @@ function ExchangeConfigCard({
   };
 
   return (
-    <View style={styles.exchangeCard}>
-      <View style={styles.exchangeHeader}>
+    <View style={[styles.exchangeCard, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
+      <View style={[styles.exchangeHeader, { borderBottomColor: theme.borderLight }]}>
         <View style={styles.exchangeHeaderLeft}>
-          <Text style={styles.exchangeName}>{config.displayName}</Text>
+          <Text style={[styles.exchangeName, { color: theme.text }]}>{config.displayName}</Text>
           <View
             style={[
               styles.statusBadge,
-              config.enabled ? styles.statusBadgeEnabled : styles.statusBadgeDisabled,
+              {
+                backgroundColor: config.enabled ? theme.successLight : theme.surfaceSecondary,
+                borderColor: config.enabled ? theme.successDark : theme.border,
+              },
             ]}
           >
             <Text
               style={[
                 styles.statusText,
-                config.enabled ? styles.statusTextEnabled : styles.statusTextDisabled,
+                { color: config.enabled ? theme.successDark : theme.textSecondary },
               ]}
             >
               {config.enabled ? 'ENABLED' : 'DISABLED'}
@@ -232,52 +293,52 @@ function ExchangeConfigCard({
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>API Key</Text>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>API Key</Text>
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
             value={apiKey}
             onChangeText={(text) => {
               setApiKey(text);
               setIsEditing(true);
             }}
             placeholder="Enter API key"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.textTertiary}
             secureTextEntry={!showApiKey}
             autoCapitalize="none"
             autoCorrect={false}
           />
           <TouchableOpacity style={styles.eyeButton} onPress={onToggleShowApiKey}>
             {showApiKey ? (
-              <EyeOff size={20} color="#6B7280" />
+              <EyeOff size={20} color={theme.textSecondary} />
             ) : (
-              <Eye size={20} color="#6B7280" />
+              <Eye size={20} color={theme.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>API Secret</Text>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>API Secret</Text>
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
             value={apiSecret}
             onChangeText={(text) => {
               setApiSecret(text);
               setIsEditing(true);
             }}
             placeholder="Enter API secret"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.textTertiary}
             secureTextEntry={!showApiKey}
             autoCapitalize="none"
             autoCorrect={false}
           />
           <TouchableOpacity style={styles.eyeButton} onPress={onToggleShowApiKey}>
             {showApiKey ? (
-              <EyeOff size={20} color="#6B7280" />
+              <EyeOff size={20} color={theme.textSecondary} />
             ) : (
-              <Eye size={20} color="#6B7280" />
+              <Eye size={20} color={theme.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
@@ -286,12 +347,12 @@ function ExchangeConfigCard({
       {isEditing && (
         <View style={styles.buttonGroup}>
           <TouchableOpacity
-            style={[styles.button, styles.buttonSecondary]}
+            style={[styles.button, styles.buttonSecondary, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
             onPress={handleCancel}
           >
-            <Text style={styles.buttonSecondaryText}>Cancel</Text>
+            <Text style={[styles.buttonSecondaryText, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleSave}>
+          <TouchableOpacity style={[styles.button, styles.buttonPrimary, { backgroundColor: theme.tint }]} onPress={handleSave}>
             <Text style={styles.buttonPrimaryText}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -303,7 +364,6 @@ function ExchangeConfigCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   contentContainer: {
     padding: 16,
@@ -316,13 +376,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: '#111827',
     marginTop: 12,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
   section: {
@@ -337,23 +395,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
     lineHeight: 20,
   },
   modeContainer: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -365,12 +419,10 @@ const styles = StyleSheet.create({
   modeLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#111827',
     marginBottom: 2,
   },
   modeDescription: {
     fontSize: 12,
-    color: '#6B7280',
   },
   modeIndicator: {
     flexDirection: 'row',
@@ -380,30 +432,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  modeIndicatorLive: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#10B981',
-  },
-  modeIndicatorSandbox: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
-  },
   modeIndicatorText: {
     fontSize: 14,
     fontWeight: '600' as const,
   },
-  modeIndicatorTextLive: {
-    color: '#059669',
-  },
-  modeIndicatorTextSandbox: {
-    color: '#D97706',
-  },
   exchangeCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -416,7 +452,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   exchangeHeaderLeft: {
     flexDirection: 'row',
@@ -426,7 +461,6 @@ const styles = StyleSheet.create({
   exchangeName: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -434,24 +468,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
   },
-  statusBadgeEnabled: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#10B981',
-  },
-  statusBadgeDisabled: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#D1D5DB',
-  },
   statusText: {
     fontSize: 10,
     fontWeight: '700' as const,
     letterSpacing: 0.5,
-  },
-  statusTextEnabled: {
-    color: '#059669',
-  },
-  statusTextDisabled: {
-    color: '#6B7280',
   },
   inputGroup: {
     marginBottom: 16,
@@ -459,7 +479,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#374151',
     marginBottom: 8,
   },
   inputContainer: {
@@ -469,13 +488,10 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: '#111827',
   },
   eyeButton: {
     position: 'absolute',
@@ -494,23 +510,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonPrimary: {
-    backgroundColor: '#3B82F6',
-  },
+  buttonPrimary: {},
   buttonPrimaryText: {
     fontSize: 14,
     fontWeight: '600' as const,
     color: '#FFFFFF',
   },
   buttonSecondary: {
-    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   buttonSecondaryText: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#374151',
   },
   footer: {
     paddingVertical: 24,
@@ -518,14 +529,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#9CA3AF',
     textAlign: 'center',
   },
   cryptoPairsContainer: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -537,7 +545,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   cryptoPairInfo: {
     flex: 1,
@@ -545,24 +552,19 @@ const styles = StyleSheet.create({
   cryptoPairName: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: '#111827',
     marginBottom: 2,
   },
   cryptoPairSymbol: {
     fontSize: 13,
-    color: '#6B7280',
   },
   pairLimitInfo: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#EFF6FF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
   },
   pairLimitText: {
     fontSize: 13,
-    color: '#1E40AF',
     textAlign: 'center',
     fontWeight: '600' as const,
   },

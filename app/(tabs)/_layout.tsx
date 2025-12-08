@@ -1,19 +1,25 @@
 import { Tabs } from "expo-router";
 import { TrendingUp, Settings } from "lucide-react-native";
 import React from "react";
-
-import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function TabLayout() {
+  const { theme } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.light.tint,
+        tabBarActiveTintColor: theme.tint,
+        tabBarInactiveTintColor: theme.textTertiary,
         headerShown: true,
+        headerStyle: {
+          backgroundColor: theme.surface,
+        },
+        headerTintColor: theme.text,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.surface,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: theme.border,
         },
       }}
     >

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { TrendingUp, RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useExchange } from '@/contexts/ExchangeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { TickerData } from '@/types/exchanges';
 import { Stack } from 'expo-router';
 import { useMemo } from 'react';
@@ -13,6 +14,7 @@ import { ArbitrageOpportunitiesCard } from '@/components/market/ArbitrageOpportu
 
 export default function MarketScreen() {
   const { getEnabledConfigs, globalMode, getEnabledCryptoPairs } = useExchange();
+  const { theme } = useTheme();
   const enabledConfigs = getEnabledConfigs();
   const enabledPairs = getEnabledCryptoPairs();
 
@@ -92,13 +94,16 @@ export default function MarketScreen() {
               <View
                 style={[
                   styles.modeBadge,
-                  globalMode === 'live' ? styles.modeBadgeLive : styles.modeBadgeSandbox,
+                  {
+                    backgroundColor: globalMode === 'live' ? theme.successLight : theme.warningLight,
+                    borderColor: globalMode === 'live' ? theme.successDark : theme.warningDark,
+                  },
                 ]}
               >
                 <Text
                   style={[
                     styles.modeText,
-                    globalMode === 'live' ? styles.modeTextLive : styles.modeTextSandbox,
+                    { color: globalMode === 'live' ? theme.successDark : theme.warningDark },
                   ]}
                 >
                   {globalMode.toUpperCase()}
@@ -109,7 +114,7 @@ export default function MarketScreen() {
         }}
       />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={isFetching && !isLoading} onRefresh={handleRefresh} />
@@ -117,14 +122,14 @@ export default function MarketScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerIcon}>
-            <TrendingUp size={32} color="#10B981" strokeWidth={2.5} />
+            <TrendingUp size={32} color={theme.success} strokeWidth={2.5} />
           </View>
-          <Text style={styles.title}>Crypto Market</Text>
-          <Text style={styles.subtitle}>Real-time bid/ask prices from multiple exchanges</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Crypto Market</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Real-time bid/ask prices from multiple exchanges</Text>
           {enabledPairs.length > 0 && (
             <View style={styles.enabledPairsRow}>
               {enabledPairs.map((pair) => (
-                <View key={pair.name} style={styles.pairChip}>
+                <View key={pair.name} style={[styles.pairChip, { backgroundColor: theme.successDark }]}>
                   <Text style={styles.pairChipText}>{pair.name}</Text>
                 </View>
               ))}
@@ -134,8 +139,8 @@ export default function MarketScreen() {
 
         {isLoading && tickers.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading market data...</Text>
+            <ActivityIndicator size="large" color={theme.tint} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading market data...</Text>
           </View>
         ) : (
           <>
@@ -145,8 +150,8 @@ export default function MarketScreen() {
               return (
                 <View key={pair.symbol} style={styles.pairSection}>
                   <View style={styles.pairHeader}>
-                    <Text style={styles.pairTitle}>{pair.displayName}</Text>
-                    <Text style={styles.pairSymbol}>{pair.symbol}</Text>
+                    <Text style={[styles.pairTitle, { color: theme.text }]}>{pair.displayName}</Text>
+                    <Text style={[styles.pairSymbol, { color: theme.successDark, backgroundColor: theme.successLight }]}>{pair.symbol}</Text>
                   </View>
 
                   {pairTickers.map((ticker) => (
@@ -166,13 +171,13 @@ export default function MarketScreen() {
             <ArbitrageOpportunitiesCard opportunities={topOpportunities} />
 
             {errors.length > 0 && errors.map((error) => (
-              <View key={error.key} style={styles.errorCard}>
-                <AlertCircle size={20} color="#EF4444" />
+              <View key={error.key} style={[styles.errorCard, { backgroundColor: theme.errorLight }]}>
+                <AlertCircle size={20} color={theme.error} />
                 <View style={styles.errorTextContainer}>
-                  <Text style={styles.errorExchange}>
+                  <Text style={[styles.errorExchange, { color: theme.errorDark }]}>
                     [{error.exchange}] {error.symbol}
                   </Text>
-                  <Text style={styles.errorText}>{error.message}</Text>
+                  <Text style={[styles.errorText, { color: theme.errorDark }]}>{error.message}</Text>
                 </View>
               </View>
             ))}
@@ -181,8 +186,8 @@ export default function MarketScreen() {
 
         {isFetching && !isLoading && (
           <View style={styles.refreshIndicator}>
-            <RefreshCw size={16} color="#6B7280" />
-            <Text style={styles.refreshText}>Updating...</Text>
+            <RefreshCw size={16} color={theme.textSecondary} />
+            <Text style={[styles.refreshText, { color: theme.textSecondary }]}>Updating...</Text>
           </View>
         )}
       </ScrollView>
@@ -193,7 +198,6 @@ export default function MarketScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   contentContainer: {
     padding: 16,
@@ -207,24 +211,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  modeBadgeLive: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#10B981',
-  },
-  modeBadgeSandbox: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
-  },
   modeText: {
     fontSize: 12,
     fontWeight: '700' as const,
     letterSpacing: 0.5,
-  },
-  modeTextLive: {
-    color: '#059669',
-  },
-  modeTextSandbox: {
-    color: '#D97706',
   },
   header: {
     alignItems: 'center',
@@ -237,12 +227,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: '#111827',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
   loadingContainer: {
@@ -253,10 +241,8 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    color: '#6B7280',
   },
   errorCard: {
-    backgroundColor: '#FEE2E2',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -271,13 +257,11 @@ const styles = StyleSheet.create({
   errorExchange: {
     fontSize: 12,
     fontWeight: '700' as const,
-    color: '#991B1B',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   errorText: {
     fontSize: 13,
-    color: '#991B1B',
     lineHeight: 18,
   },
   refreshIndicator: {
@@ -289,7 +273,6 @@ const styles = StyleSheet.create({
   },
   refreshText: {
     fontSize: 12,
-    color: '#6B7280',
   },
   enabledPairsRow: {
     flexDirection: 'row',
@@ -299,7 +282,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   pairChip: {
-    backgroundColor: '#059669',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -323,13 +305,10 @@ const styles = StyleSheet.create({
   pairTitle: {
     fontSize: 22,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   pairSymbol: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#059669',
-    backgroundColor: '#DCFCE7',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,

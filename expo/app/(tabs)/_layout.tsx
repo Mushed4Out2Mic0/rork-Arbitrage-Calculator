@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { TrendingUp, Settings } from "lucide-react-native";
+import { TrendingUp, Settings, Wallet, Zap } from "lucide-react-native";
 import React from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -28,6 +28,20 @@ export default function TabLayout() {
         options={{
           title: "Market",
           tabBarIcon: ({ color }) => <TrendingUp color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="trading"
+        options={{
+          title: "Trading",
+          tabBarIcon: ({ color }) => <Zap color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="portfolio"
+        options={{
+          title: "Portfolio",
+          tabBarIcon: ({ color }) => <Wallet color={color} size={24} />,
         }}
       />
       <Tabs.Screen

@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { TickerData } from '@/types/exchanges';
 import { getBestArbitragePath, getPriceComparisons } from '@/utils/arbitrage';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ComparisonCardProps {
   tickers: TickerData[];
 }
 
 export function ComparisonCard({ tickers }: ComparisonCardProps) {
+  const { theme } = useTheme();
   if (tickers.length < 2) return null;
 
   const prices = getPriceComparisons(tickers);
@@ -17,27 +19,29 @@ export function ComparisonCard({ tickers }: ComparisonCardProps) {
   const { lowestAskExchange, lowestAsk, highestBidExchange, highestBid, priceDifference, priceDifferencePercent } = arbitragePath;
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Price Comparison</Text>
+    <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Price Comparison</Text>
       <View style={styles.content}>
-        <Text style={styles.description}>Cross-Exchange Price Analysis</Text>
+        <Text style={[styles.description, { color: theme.textSecondary }]}>Cross-Exchange Price Analysis</Text>
 
         {prices.map((price) => (
-          <View key={price.exchange} style={styles.row}>
-            <Text style={styles.exchange}>{price.exchange.toUpperCase()}</Text>
+          <View key={price.exchange} style={[styles.row, { borderBottomColor: theme.borderLight }]}>
+            <Text style={[styles.exchange, { color: theme.text }]}>{price.exchange.toUpperCase()}</Text>
             <View style={styles.prices}>
               <Text
                 style={[
                   styles.bid,
+                  { color: theme.success },
                   price.bid === highestBid && styles.highlightedPrice,
                 ]}
               >
                 ${price.bid.toFixed(2)}
               </Text>
-              <Text style={styles.separator}>|</Text>
+              <Text style={[styles.separator, { color: theme.textTertiary }]}>|</Text>
               <Text
                 style={[
                   styles.ask,
+                  { color: theme.error },
                   price.ask === lowestAsk && styles.highlightedPrice,
                 ]}
               >
@@ -47,32 +51,32 @@ export function ComparisonCard({ tickers }: ComparisonCardProps) {
           </View>
         ))}
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-        <View style={styles.arbitrageBox}>
+        <View style={[styles.arbitrageBox, { backgroundColor: theme.successLight, borderColor: theme.successDark }]}>
           <View style={styles.arbitrageHeader}>
-            <Text style={styles.arbitrageTitle}>Best Arbitrage Path:</Text>
-            <View style={styles.cryptoBadge}>
+            <Text style={[styles.arbitrageTitle, { color: theme.successDark }]}>Best Arbitrage Path:</Text>
+            <View style={[styles.cryptoBadge, { backgroundColor: theme.successDark }]}>
               <Text style={styles.cryptoBadgeText}>{tickers[0]?.symbol || 'BTC/USDT'}</Text>
             </View>
           </View>
           <View style={styles.pathRow}>
             <View style={styles.pathStep}>
-              <Text style={styles.pathLabel}>BUY on</Text>
-              <Text style={styles.pathExchange}>{lowestAskExchange.toUpperCase()}</Text>
-              <Text style={styles.pathPrice}>${lowestAsk.toFixed(2)}</Text>
+              <Text style={[styles.pathLabel, { color: theme.textSecondary }]}>BUY on</Text>
+              <Text style={[styles.pathExchange, { color: theme.text }]}>{lowestAskExchange.toUpperCase()}</Text>
+              <Text style={[styles.pathPrice, { color: theme.successDark }]}>${lowestAsk.toFixed(2)}</Text>
             </View>
-            <Text style={styles.pathArrow}>→</Text>
+            <Text style={[styles.pathArrow, { color: theme.success }]}>→</Text>
             <View style={styles.pathStep}>
-              <Text style={styles.pathLabel}>SELL on</Text>
-              <Text style={styles.pathExchange}>{highestBidExchange.toUpperCase()}</Text>
-              <Text style={styles.pathPrice}>${highestBid.toFixed(2)}</Text>
+              <Text style={[styles.pathLabel, { color: theme.textSecondary }]}>SELL on</Text>
+              <Text style={[styles.pathExchange, { color: theme.text }]}>{highestBidExchange.toUpperCase()}</Text>
+              <Text style={[styles.pathPrice, { color: theme.successDark }]}>${highestBid.toFixed(2)}</Text>
             </View>
           </View>
           {priceDifference > 0 && (
-            <View style={styles.potential}>
-              <Text style={styles.potentialLabel}>Price Difference:</Text>
-              <Text style={styles.potentialValue}>
+            <View style={[styles.potential, { borderTopColor: theme.successDark }]}>
+              <Text style={[styles.potentialLabel, { color: theme.successDark }]}>Price Difference:</Text>
+              <Text style={[styles.potentialValue, { color: theme.successDark }]}>
                 ${priceDifference.toFixed(2)} ({priceDifferencePercent.toFixed(3)}%)
               </Text>
             </View>
@@ -85,11 +89,9 @@ export function ComparisonCard({ tickers }: ComparisonCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -98,7 +100,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#111827',
     marginBottom: 16,
   },
   content: {
@@ -109,11 +110,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
+    borderBottomWidth: 1,
   },
   exchange: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#374151',
     flex: 1,
   },
   prices: {
@@ -124,16 +125,13 @@ const styles = StyleSheet.create({
   bid: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#10B981',
   },
   separator: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   ask: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#EF4444',
   },
   highlightedPrice: {
     fontWeight: '700' as const,
@@ -141,17 +139,14 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 12,
-    color: '#6B7280',
     marginBottom: 12,
     fontWeight: '500' as const,
   },
   arbitrageBox: {
-    backgroundColor: '#F0FDF4',
     padding: 16,
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#86EFAC',
   },
   arbitrageHeader: {
     flexDirection: 'row',
@@ -162,10 +157,8 @@ const styles = StyleSheet.create({
   arbitrageTitle: {
     fontSize: 13,
     fontWeight: '700' as const,
-    color: '#166534',
   },
   cryptoBadge: {
-    backgroundColor: '#059669',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -188,7 +181,6 @@ const styles = StyleSheet.create({
   },
   pathLabel: {
     fontSize: 10,
-    color: '#6B7280',
     fontWeight: '600' as const,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -196,16 +188,13 @@ const styles = StyleSheet.create({
   pathExchange: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   pathPrice: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#059669',
   },
   pathArrow: {
     fontSize: 24,
-    color: '#10B981',
     fontWeight: '700' as const,
   },
   potential: {
@@ -214,21 +203,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#BBF7D0',
   },
   potentialLabel: {
     fontSize: 12,
-    color: '#166534',
     fontWeight: '600' as const,
   },
   potentialValue: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: '#059669',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
     marginVertical: 12,
   },
 });

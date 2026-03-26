@@ -1,80 +1,85 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { ArbitrageOpportunity, getCryptoSymbol } from '@/utils/arbitrage';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ArbitrageOpportunitiesCardProps {
   opportunities: ArbitrageOpportunity[];
 }
 
 export function ArbitrageOpportunitiesCard({ opportunities }: ArbitrageOpportunitiesCardProps) {
+  const { theme } = useTheme();
   if (opportunities.length === 0) return null;
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Top 5 Profitable Opportunities</Text>
-      <Text style={styles.subtitle}>After cost analysis • Sorted by net profit</Text>
+    <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Top 5 Profitable Opportunities</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>After cost analysis • Sorted by net profit</Text>
       <View style={styles.content}>
         {opportunities.map((opp, index) => {
           const cryptoSymbol = getCryptoSymbol(opp.symbol);
           
           return (
-            <View key={`${opp.buyExchange}-${opp.sellExchange}-${opp.timestamp}-${index}`} style={styles.row}>
+            <View
+              key={`${opp.buyExchange}-${opp.sellExchange}-${opp.timestamp}-${index}`}
+              style={[styles.row, { backgroundColor: theme.successLight, borderColor: theme.success }]}
+            >
               <View style={styles.header}>
                 <View style={styles.exchangePair}>
-                  <View style={styles.buyBadge}>
+                  <View style={[styles.buyBadge, { backgroundColor: theme.success }]}>
                     <Text style={styles.buyBadgeText}>BUY</Text>
                   </View>
-                  <Text style={styles.exchange}>{opp.buyExchange.toUpperCase()}</Text>
-                  <Text style={styles.arrow}>→</Text>
-                  <View style={styles.sellBadge}>
+                  <Text style={[styles.exchange, { color: theme.text }]}>{opp.buyExchange.toUpperCase()}</Text>
+                  <Text style={[styles.arrow, { color: theme.textSecondary }]}>→</Text>
+                  <View style={[styles.sellBadge, { backgroundColor: theme.error }]}>
                     <Text style={styles.sellBadgeText}>SELL</Text>
                   </View>
-                  <Text style={styles.exchange}>{opp.sellExchange.toUpperCase()}</Text>
+                  <Text style={[styles.exchange, { color: theme.text }]}>{opp.sellExchange.toUpperCase()}</Text>
                 </View>
-                <Text style={styles.time}>{new Date(opp.timestamp).toLocaleTimeString()}</Text>
+                <Text style={[styles.time, { color: theme.textTertiary }]}>{new Date(opp.timestamp).toLocaleTimeString()}</Text>
               </View>
               <View style={styles.pairBadgeRow}>
-                <View style={styles.pairBadge}>
-                  <Text style={styles.pairBadgeText}>{opp.symbol}</Text>
+                <View style={[styles.pairBadge, { backgroundColor: theme.infoLight }]}>
+                  <Text style={[styles.pairBadgeText, { color: theme.infoDark }]}>{opp.symbol}</Text>
                 </View>
               </View>
               <View style={styles.values}>
                 <View style={styles.item}>
-                  <Text style={styles.label}>Buy Price:</Text>
-                  <Text style={styles.value}>${opp.buyPrice.toFixed(2)}</Text>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Buy Price:</Text>
+                  <Text style={[styles.value, { color: theme.text }]}>${opp.buyPrice.toFixed(2)}</Text>
                 </View>
                 <View style={styles.item}>
-                  <Text style={styles.label}>Sell Price:</Text>
-                  <Text style={styles.value}>${opp.sellPrice.toFixed(2)}</Text>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>Sell Price:</Text>
+                  <Text style={[styles.value, { color: theme.text }]}>${opp.sellPrice.toFixed(2)}</Text>
                 </View>
               </View>
-              <View style={styles.metrics}>
+              <View style={[styles.metrics, { borderTopColor: theme.successDark }]}>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Price Deviation:</Text>
-                  <Text style={[styles.metricValue, styles.positiveValue]}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Price Deviation:</Text>
+                  <Text style={[styles.metricValue, { color: theme.success }]}>
                     ${opp.deviation.toFixed(2)} ({opp.percentDeviation.toFixed(3)}%)
                   </Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Execution Cost:</Text>
-                  <Text style={[styles.metricValue, styles.costValue]}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Execution Cost:</Text>
+                  <Text style={[styles.metricValue, { color: theme.error }]}>
                     ${opp.totalCost.toFixed(2)} ({opp.costPercentage.toFixed(3)}%)
                   </Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Gross Profit:</Text>
-                  <Text style={[styles.metricValue, styles.neutralValue]}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Gross Profit:</Text>
+                  <Text style={[styles.metricValue, { color: theme.textSecondary }]}>
                     ${opp.grossProfit.toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Net Profit ({opp.tradeAmount} {cryptoSymbol}):</Text>
-                  <Text style={[styles.metricValue, styles.profitValue]}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Net Profit ({opp.tradeAmount} {cryptoSymbol}):</Text>
+                  <Text style={[styles.metricValue, styles.profitValue, { color: theme.successDark }]}>
                     ${opp.netProfit.toFixed(2)}
                   </Text>
                 </View>
-                <View style={styles.feesBreakdown}>
-                  <Text style={styles.feesLabel}>Fees:</Text>
-                  <Text style={styles.feesDetail}>Buy ${opp.buyFee.toFixed(2)} + Sell ${opp.sellFee.toFixed(2)}</Text>
+                <View style={[styles.feesBreakdown, { borderTopColor: theme.successDark }]}>
+                  <Text style={[styles.feesLabel, { color: theme.textSecondary }]}>Fees:</Text>
+                  <Text style={[styles.feesDetail, { color: theme.textTertiary }]}>Buy ${opp.buyFee.toFixed(2)} + Sell ${opp.sellFee.toFixed(2)}</Text>
                 </View>
               </View>
             </View>
@@ -87,11 +92,9 @@ export function ArbitrageOpportunitiesCard({ opportunities }: ArbitrageOpportuni
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -100,12 +103,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#111827',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6B7280',
     marginBottom: 16,
   },
   content: {
@@ -114,10 +115,8 @@ const styles = StyleSheet.create({
   row: {
     paddingVertical: 14,
     paddingHorizontal: 14,
-    backgroundColor: '#F0FDF4',
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#10B981',
   },
   header: {
     flexDirection: 'row',
@@ -133,11 +132,9 @@ const styles = StyleSheet.create({
   exchange: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   time: {
     fontSize: 11,
-    color: '#9CA3AF',
   },
   values: {
     flexDirection: 'row',
@@ -153,16 +150,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '500' as const,
   },
   value: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#111827',
   },
   buyBadge: {
-    backgroundColor: '#10B981',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -174,7 +168,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   sellBadge: {
-    backgroundColor: '#EF4444',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -187,7 +180,6 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '700' as const,
   },
   metrics: {
@@ -195,7 +187,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#D1FAE5',
   },
   metricItem: {
     flexDirection: 'row',
@@ -204,7 +195,6 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '500' as const,
   },
   metricValue: {
@@ -212,17 +202,7 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   profitValue: {
-    color: '#059669',
     fontSize: 15,
-  },
-  positiveValue: {
-    color: '#10B981',
-  },
-  neutralValue: {
-    color: '#6B7280',
-  },
-  costValue: {
-    color: '#EF4444',
   },
   feesBreakdown: {
     flexDirection: 'row',
@@ -231,23 +211,19 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#D1FAE5',
   },
   feesLabel: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '500' as const,
   },
   feesDetail: {
     fontSize: 11,
-    color: '#9CA3AF',
     fontWeight: '500' as const,
   },
   pairBadgeRow: {
     marginBottom: 8,
   },
   pairBadge: {
-    backgroundColor: '#DBEAFE',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -256,7 +232,6 @@ const styles = StyleSheet.create({
   pairBadgeText: {
     fontSize: 10,
     fontWeight: '700' as const,
-    color: '#1E40AF',
     letterSpacing: 0.5,
   },
 });

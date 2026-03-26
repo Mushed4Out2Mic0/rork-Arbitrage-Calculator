@@ -2,12 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TickerData } from '@/types/exchanges';
 import { calculateArbitrageOpportunity, getCryptoSymbol } from '@/utils/arbitrage';
 import { TRADE_AMOUNT } from '@/constants/exchanges';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ExecutionCostCardProps {
   tickers: TickerData[];
 }
 
 export function ExecutionCostCard({ tickers }: ExecutionCostCardProps) {
+  const { theme } = useTheme();
   if (tickers.length < 2) return null;
 
   const cryptoSymbol = getCryptoSymbol(tickers[0]?.symbol || 'BTC/USDT');
@@ -23,32 +25,33 @@ export function ExecutionCostCard({ tickers }: ExecutionCostCardProps) {
   const topOpportunities = opportunities.sort((a, b) => b.netProfit - a.netProfit).slice(0, 3);
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Execution Cost Analysis</Text>
-      <Text style={styles.subtitle}>Cross-exchange execution costs for {TRADE_AMOUNT} {cryptoSymbol}</Text>
+    <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.cardShadow }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Execution Cost Analysis</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Cross-exchange execution costs for {TRADE_AMOUNT} {cryptoSymbol}</Text>
       <View style={styles.content}>
         {topOpportunities.map((opp, index) => (
           <View 
             key={`${opp.buyExchange}-${opp.sellExchange}-${index}`}
             style={[
               styles.row,
-              opp.isProfitable && styles.profitableRow,
+              { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
+              opp.isProfitable && { backgroundColor: theme.successLight, borderColor: theme.success, borderWidth: 2 },
             ]}
           >
             <View style={styles.header}>
               <View style={styles.exchangeFlow}>
-                <View style={styles.buyIndicator}>
+                <View style={[styles.buyIndicator, { backgroundColor: theme.success }]}>
                   <Text style={styles.buyIndicatorText}>BUY</Text>
                 </View>
-                <Text style={styles.exchangeName}>{opp.buyExchange.toUpperCase()}</Text>
-                <Text style={styles.flowArrow}>→</Text>
-                <View style={styles.sellIndicator}>
+                <Text style={[styles.exchangeName, { color: theme.text }]}>{opp.buyExchange.toUpperCase()}</Text>
+                <Text style={[styles.flowArrow, { color: theme.textSecondary }]}>→</Text>
+                <View style={[styles.sellIndicator, { backgroundColor: theme.error }]}>
                   <Text style={styles.sellIndicatorText}>SELL</Text>
                 </View>
-                <Text style={styles.exchangeName}>{opp.sellExchange.toUpperCase()}</Text>
+                <Text style={[styles.exchangeName, { color: theme.text }]}>{opp.sellExchange.toUpperCase()}</Text>
               </View>
               {opp.isProfitable && index === 0 && (
-                <View style={styles.bestBadge}>
+                <View style={[styles.bestBadge, { backgroundColor: theme.success }]}>
                   <Text style={styles.bestBadgeText}>BEST</Text>
                 </View>
               )}
@@ -56,34 +59,34 @@ export function ExecutionCostCard({ tickers }: ExecutionCostCardProps) {
 
             <View style={styles.metrics}>
               <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Buy Price:</Text>
-                <Text style={styles.metricValue}>${opp.buyPrice.toFixed(2)}</Text>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Buy Price:</Text>
+                <Text style={[styles.metricValue, { color: theme.text }]}>${opp.buyPrice.toFixed(2)}</Text>
               </View>
               <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Sell Price:</Text>
-                <Text style={styles.metricValue}>${opp.sellPrice.toFixed(2)}</Text>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sell Price:</Text>
+                <Text style={[styles.metricValue, { color: theme.text }]}>${opp.sellPrice.toFixed(2)}</Text>
               </View>
               <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Gross Profit:</Text>
-                <Text style={[styles.metricValue, opp.grossProfit > 0 ? styles.positiveValue : styles.negativeValue]}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Gross Profit:</Text>
+                <Text style={[styles.metricValue, { color: opp.grossProfit > 0 ? theme.success : theme.error }]}>
                   ${opp.grossProfit.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Total Fees:</Text>
-                <Text style={[styles.metricValue, styles.costValue]}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Total Fees:</Text>
+                <Text style={[styles.metricValue, { color: theme.error }]}>
                   ${opp.totalCost.toFixed(2)} ({opp.costPercentage.toFixed(3)}%)
                 </Text>
               </View>
               <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Net Profit:</Text>
-                <Text style={[styles.metricValue, opp.isProfitable ? styles.profitValue : styles.negativeValue]}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Net Profit:</Text>
+                <Text style={[styles.metricValue, { color: opp.isProfitable ? theme.successDark : theme.error }]}>
                   ${opp.netProfit.toFixed(2)} ({((opp.netProfit / (opp.buyPrice * opp.tradeAmount)) * 100).toFixed(3)}%)
                 </Text>
               </View>
-              <View style={styles.feesBreakdown}>
-                <Text style={styles.feesLabel}>Fee Breakdown:</Text>
-                <Text style={styles.feesDetail}>
+              <View style={[styles.feesBreakdown, { borderTopColor: theme.border }]}>
+                <Text style={[styles.feesLabel, { color: theme.textSecondary }]}>Fee Breakdown:</Text>
+                <Text style={[styles.feesDetail, { color: theme.textTertiary }]}>
                   Buy ${opp.buyFee.toFixed(2)} + Sell ${opp.sellFee.toFixed(2)}
                 </Text>
               </View>
@@ -97,11 +100,9 @@ export function ExecutionCostCard({ tickers }: ExecutionCostCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -110,12 +111,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#111827',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6B7280',
     marginBottom: 16,
   },
   content: {
@@ -123,15 +122,8 @@ const styles = StyleSheet.create({
   },
   row: {
     padding: 16,
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  profitableRow: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#10B981',
-    borderWidth: 2,
   },
   header: {
     flexDirection: 'row',
@@ -140,7 +132,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   bestBadge: {
-    backgroundColor: '#10B981',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -161,26 +152,10 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 13,
-    color: '#6B7280',
   },
   metricValue: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#111827',
-  },
-  costValue: {
-    color: '#EF4444',
-    fontWeight: '700' as const,
-  },
-  negativeValue: {
-    color: '#EF4444',
-  },
-  positiveValue: {
-    color: '#10B981',
-  },
-  profitValue: {
-    color: '#059669',
-    fontWeight: '700' as const,
   },
   exchangeFlow: {
     flexDirection: 'row',
@@ -188,7 +163,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   buyIndicator: {
-    backgroundColor: '#10B981',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -200,7 +174,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   sellIndicator: {
-    backgroundColor: '#EF4444',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -214,11 +187,9 @@ const styles = StyleSheet.create({
   exchangeName: {
     fontSize: 13,
     fontWeight: '700' as const,
-    color: '#111827',
   },
   flowArrow: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '700' as const,
   },
   feesBreakdown: {
@@ -228,16 +199,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   feesLabel: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '500' as const,
   },
   feesDetail: {
     fontSize: 11,
-    color: '#9CA3AF',
     fontWeight: '500' as const,
   },
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import crypto from "crypto";
+import * as crypto from "node:crypto";
 
 const inputSchema = z.object({
   exchange: z.enum(["kraken", "coinbase", "binance", "bybit"]),

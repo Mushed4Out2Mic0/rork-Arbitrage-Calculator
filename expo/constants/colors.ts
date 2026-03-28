@@ -1,65 +1,80 @@
-export const lightTheme = {
-  background: '#F9FAFB',
+export type Theme = {
+  background: string;
+  surface: string;
+  surfaceSecondary: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  border: string;
+  borderLight: string;
+  tint: string;
+  success: string;
+  successLight: string;
+  successDark: string;
+  warning: string;
+  warningLight: string;
+  warningDark: string;
+  error: string;
+  errorLight: string;
+  errorDark: string;
+  info: string;
+  infoLight: string;
+  infoDark: string;
+  card: string;
+  cardShadow: string;
+  statusBar: 'dark' | 'light';
+};
+
+export const lightTheme: Theme = {
+  background: '#F8F9FB',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F3F4F6',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
+  surfaceSecondary: '#F1F3F5',
+  text: '#1A1D23',
+  textSecondary: '#5F6B7A',
+  textTertiary: '#9AA5B4',
+  border: '#E2E6EB',
+  borderLight: '#F1F3F5',
+  tint: '#2563EB',
+  success: '#059669',
+  successLight: '#ECFDF5',
+  successDark: '#047857',
+  warning: '#D97706',
+  warningLight: '#FFFBEB',
+  warningDark: '#B45309',
+  error: '#DC2626',
+  errorLight: '#FEF2F2',
+  errorDark: '#991B1B',
+  info: '#2563EB',
+  infoLight: '#EFF6FF',
+  infoDark: '#1D4ED8',
+  card: '#FFFFFF',
+  cardShadow: 'rgba(0, 0, 0, 0.06)',
+  statusBar: 'dark',
+};
+
+export const darkTheme: Theme = {
+  background: '#0B0E14',
+  surface: '#141820',
+  surfaceSecondary: '#1C2230',
+  text: '#E8ECF1',
+  textSecondary: '#8B95A5',
+  textTertiary: '#555F70',
+  border: '#1E2636',
+  borderLight: '#232B3A',
   tint: '#3B82F6',
   success: '#10B981',
-  successLight: '#DCFCE7',
-  successDark: '#059669',
+  successLight: '#0D2E23',
+  successDark: '#34D399',
   warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  warningDark: '#D97706',
-  error: '#EF4444',
-  errorLight: '#FEE2E2',
-  errorDark: '#991B1B',
-  info: '#3B82F6',
-  infoLight: '#EFF6FF',
-  infoDark: '#1E40AF',
-  card: '#FFFFFF',
-  cardShadow: 'rgba(0, 0, 0, 0.05)',
-};
-
-export const darkTheme = {
-  background: '#0F172A',
-  surface: '#1E293B',
-  surfaceSecondary: '#334155',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  textTertiary: '#64748B',
-  border: '#334155',
-  borderLight: '#475569',
-  tint: '#60A5FA',
-  success: '#34D399',
-  successLight: '#064E3B',
-  successDark: '#6EE7B7',
-  warning: '#FBBF24',
-  warningLight: '#78350F',
+  warningLight: '#2E2108',
   warningDark: '#FCD34D',
-  error: '#F87171',
-  errorLight: '#7F1D1D',
+  error: '#EF4444',
+  errorLight: '#2E0D0D',
   errorDark: '#FCA5A5',
-  info: '#60A5FA',
-  infoLight: '#1E3A8A',
+  info: '#3B82F6',
+  infoLight: '#0D1B3E',
   infoDark: '#93C5FD',
-  card: '#1E293B',
-  cardShadow: 'rgba(0, 0, 0, 0.3)',
-};
-
-export type Theme = typeof lightTheme;
-
-const tintColorLight = '#3B82F6';
-
-export default {
-  light: {
-    text: '#000',
-    background: '#fff',
-    tint: tintColorLight,
-    tabIconDefault: '#ccc',
-    tabIconSelected: tintColorLight,
-  },
+  card: '#141820',
+  cardShadow: 'rgba(0, 0, 0, 0.4)',
+  statusBar: 'light',
 };

@@ -1,22 +1,5 @@
 import { ExchangeName } from './exchanges';
 
-export interface ExchangeBalance {
-  exchange: ExchangeName;
-  asset: string;
-  free: number;
-  locked: number;
-  total: number;
-  usdValue: number;
-}
-
-export interface BalanceSummary {
-  exchange: ExchangeName;
-  balances: ExchangeBalance[];
-  totalUsdValue: number;
-  lastUpdated: number;
-  error?: string;
-}
-
 export type TradeMode = 'live' | 'paper';
 export type TradeSide = 'buy' | 'sell';
 export type TradeStatus = 'pending' | 'filled' | 'failed' | 'cancelled';
@@ -34,7 +17,6 @@ export interface TradeOrder {
   total: number;
   timestamp: number;
   errorMessage?: string;
-  linkedOrderId?: string;
 }
 
 export interface ArbitrageExecution {

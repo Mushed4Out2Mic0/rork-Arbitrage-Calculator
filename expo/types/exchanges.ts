@@ -1,7 +1,5 @@
-export type ExchangeMode = 'sandbox' | 'live';
-
 export type ExchangeName = 'binance' | 'kraken' | 'coinbase' | 'bybit';
-
+export type ExchangeMode = 'sandbox' | 'live';
 export type CryptoPairName = 'BTC' | 'ETH' | 'XRP' | 'SOL' | 'BNB' | 'ADA';
 
 export interface CryptoPairConfig {
@@ -24,15 +22,17 @@ export interface TickerData {
   exchange: ExchangeName;
   symbol: string;
   bidPrice: string;
-  bidQty: string;
   askPrice: string;
+  bidQty: string;
   askQty: string;
   timestamp: number;
 }
 
-export interface ExchangeStatus {
+export interface TickerResult {
   exchange: ExchangeName;
-  connected: boolean;
-  lastUpdate: number;
+  symbol: string;
+  bid: number;
+  ask: number;
+  ts: number;
   error?: string;
 }

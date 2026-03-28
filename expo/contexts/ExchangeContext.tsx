@@ -5,145 +5,87 @@ import { ExchangeConfig, ExchangeMode, CryptoPairConfig } from '@/types/exchange
 import { DEFAULT_EXCHANGE_CONFIGS, DEFAULT_CRYPTO_PAIRS } from '@/constants/exchanges';
 import { secureStorage } from '@/utils/secureStorage';
 
-const STORAGE_KEY_MODE = 'global_exchange_mode';
-const STORAGE_KEY_CRYPTO_PAIRS = 'enabled_crypto_pairs';
+const KEY_MODE = 'global_exchange_mode';
+const KEY_PAIRS = 'enabled_crypto_pairs';
 
 export const [ExchangeProvider, useExchange] = createContextHook(() => {
   const [configs, setConfigs] = useState<ExchangeConfig[]>(DEFAULT_EXCHANGE_CONFIGS);
   const [globalMode, setGlobalMode] = useState<ExchangeMode>('live');
   const [cryptoPairs, setCryptoPairs] = useState<CryptoPairConfig[]>(DEFAULT_CRYPTO_PAIRS);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const loadConfigs = useCallback(async () => {
-    console.log('[ExchangeContext] Loading configs');
-    try {
-      setIsLoading(true);
-
-      const storedMode = await AsyncStorage.getItem(STORAGE_KEY_MODE);
-      const mode = storedMode ? (storedMode as ExchangeMode) : 'live';
-      setGlobalMode(mode);
-      console.log('[ExchangeContext] Set mode to:', mode);
-      
-      if (!storedMode) {
-        await AsyncStorage.setItem(STORAGE_KEY_MODE, 'live');
-        console.log('[ExchangeContext] Saved default live mode');
-      }
-
-      const storedPairs = await AsyncStorage.getItem(STORAGE_KEY_CRYPTO_PAIRS);
-      if (storedPairs) {
-        const pairs = JSON.parse(storedPairs) as CryptoPairConfig[];
-        setCryptoPairs(pairs);
-        console.log('[ExchangeContext] Loaded crypto pairs:', pairs);
-      } else {
-        await AsyncStorage.setItem(STORAGE_KEY_CRYPTO_PAIRS, JSON.stringify(DEFAULT_CRYPTO_PAIRS));
-        console.log('[ExchangeContext] Saved default crypto pairs');
-      }
-
-      const loadedConfigs = await Promise.all(
-        DEFAULT_EXCHANGE_CONFIGS.map(async (defaultConfig) => {
-          const apiKey = await secureStorage.getItem(`${defaultConfig.name}_api_key`);
-          const apiSecret = await secureStorage.getItem(`${defaultConfig.name}_api_secret`);
-          const enabled = await AsyncStorage.getItem(`${defaultConfig.name}_enabled`);
-          
-          return {
-            ...defaultConfig,
-            apiKey: apiKey || '',
-            apiSecret: apiSecret || '',
-            enabled: enabled !== null ? enabled === 'true' : defaultConfig.enabled,
-            mode: mode,
-          };
-        })
-      );
-
-      setConfigs(loadedConfigs);
-      console.log('[ExchangeContext] Loaded configs:', loadedConfigs);
-    } catch (error) {
-      console.error('[ExchangeContext] Error loading configs:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadConfigs();
-  }, [loadConfigs]);
-
-  const updateExchangeConfig = useCallback(
-    async (name: string, updates: Partial<ExchangeConfig>) => {
-      console.log(`[ExchangeContext] Updating ${name}:`, updates);
-      
-      setConfigs((prevConfigs) => {
-        const newConfigs = prevConfigs.map((config) =>
-          config.name === name ? { ...config, ...updates } : config
-        );
-        return newConfigs;
-      });
-
+    void (async () => {
       try {
-        if (updates.apiKey !== undefined) {
-          await secureStorage.setItem(`${name}_api_key`, updates.apiKey);
-        }
-        if (updates.apiSecret !== undefined) {
-          await secureStorage.setItem(`${name}_api_secret`, updates.apiSecret);
-        }
-        if (updates.enabled !== undefined) {
-          await AsyncStorage.setItem(`${name}_enabled`, String(updates.enabled));
+        const [storedMode, storedPairs] = await Promise.all([
+          AsyncStorage.getItem(KEY_MODE),
+          AsyncStorage.getItem(KEY_PAIRS),
+        ]);
+
+        const mode = (storedMode as ExchangeMode) || 'live';
+        setGlobalMode(mode);
+
+        if (storedPairs) {
+          setCryptoPairs(JSON.parse(storedPairs));
         }
 
-        console.log(`[ExchangeContext] Saved ${name} config`);
-      } catch (error) {
-        console.error(`[ExchangeContext] Error saving ${name} config:`, error);
+        const loaded = await Promise.all(
+          DEFAULT_EXCHANGE_CONFIGS.map(async (def) => {
+            const [apiKey, apiSecret, enabled] = await Promise.all([
+              secureStorage.getItem(`${def.name}_api_key`),
+              secureStorage.getItem(`${def.name}_api_secret`),
+              AsyncStorage.getItem(`${def.name}_enabled`),
+            ]);
+            return {
+              ...def,
+              apiKey: apiKey || '',
+              apiSecret: apiSecret || '',
+              enabled: enabled !== null ? enabled === 'true' : def.enabled,
+              mode,
+            };
+          })
+        );
+        setConfigs(loaded);
+        console.log('[Exchange] Configs loaded');
+      } catch (e) {
+        console.error('[Exchange] Load error:', e);
+      } finally {
+        setIsLoading(false);
       }
-    },
-    []
-  );
+    })();
+  }, []);
 
-  const setMode = useCallback(async (mode: ExchangeMode) => {
-    console.log('[ExchangeContext] Setting mode:', mode);
-    setGlobalMode(mode);
-
-    setConfigs((prevConfigs) => {
-      const newConfigs = prevConfigs.map((config) => ({
-        ...config,
-        mode,
-      }));
-      return newConfigs;
-    });
-
+  const updateExchangeConfig = useCallback(async (name: string, updates: Partial<ExchangeConfig>) => {
+    setConfigs((prev) => prev.map((c) => (c.name === name ? { ...c, ...updates } : c)));
     try {
-      await AsyncStorage.setItem(STORAGE_KEY_MODE, mode);
-      console.log('[ExchangeContext] Saved mode:', mode);
-    } catch (error) {
-      console.error('[ExchangeContext] Error saving mode:', error);
+      if (updates.apiKey !== undefined) await secureStorage.setItem(`${name}_api_key`, updates.apiKey);
+      if (updates.apiSecret !== undefined) await secureStorage.setItem(`${name}_api_secret`, updates.apiSecret);
+      if (updates.enabled !== undefined) await AsyncStorage.setItem(`${name}_enabled`, String(updates.enabled));
+    } catch (e) {
+      console.error(`[Exchange] Save ${name} error:`, e);
     }
   }, []);
 
-  const getEnabledConfigs = useCallback(() => {
-    return configs.filter((config) => config.enabled);
-  }, [configs]);
+  const setMode = useCallback(async (mode: ExchangeMode) => {
+    setGlobalMode(mode);
+    setConfigs((prev) => prev.map((c) => ({ ...c, mode })));
+    await AsyncStorage.setItem(KEY_MODE, mode);
+  }, []);
 
-  const getEnabledCryptoPairs = useCallback(() => {
-    return cryptoPairs.filter((pair) => pair.enabled).slice(0, 3);
-  }, [cryptoPairs]);
+  const getEnabledConfigs = useCallback(() => configs.filter((c) => c.enabled), [configs]);
 
-  const updateCryptoPairConfig = useCallback(
-    async (name: string, enabled: boolean) => {
-      console.log(`[ExchangeContext] Updating crypto pair ${name}:`, enabled);
-      
-      const newPairs = cryptoPairs.map((pair) =>
-        pair.name === name ? { ...pair, enabled } : pair
-      );
-      setCryptoPairs(newPairs);
-
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY_CRYPTO_PAIRS, JSON.stringify(newPairs));
-        console.log(`[ExchangeContext] Saved crypto pair ${name} config`);
-      } catch (error) {
-        console.error(`[ExchangeContext] Error saving crypto pair ${name} config:`, error);
-      }
-    },
+  const getEnabledCryptoPairs = useCallback(
+    () => cryptoPairs.filter((p) => p.enabled).slice(0, 3),
     [cryptoPairs]
   );
+
+  const updateCryptoPairConfig = useCallback(async (name: string, enabled: boolean) => {
+    setCryptoPairs((prev) => {
+      const next = prev.map((p) => (p.name === name ? { ...p, enabled } : p));
+      void AsyncStorage.setItem(KEY_PAIRS, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   return useMemo(
     () => ({

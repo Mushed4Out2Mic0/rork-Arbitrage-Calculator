@@ -1,12 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ExchangeProvider } from "@/contexts/ExchangeContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { TradingProvider } from "@/contexts/TradingContext";
-import { trpc, trpcClient } from "@/lib/trpc";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ExchangeProvider } from '@/contexts/ExchangeContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { TradingProvider } from '@/contexts/TradingContext';
+import { trpc, trpcClient } from '@/lib/trpc';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -25,7 +25,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: 'Back' }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );

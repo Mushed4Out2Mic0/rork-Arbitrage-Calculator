@@ -3,8 +3,8 @@ import { publicProcedure } from "../../../create-context";
 import { adapters } from "../../../../exchanges/adapters";
 
 const inputSchema = z.object({
-  exchanges: z.array(z.enum(["kraken", "coinbase", "binance", "bybit"])).nonempty(),
-  symbols: z.array(z.string().regex(/^[A-Z]{2,10}\/[A-Z]{2,10}$/i)).nonempty(),
+  exchanges: z.array(z.enum(["kraken", "coinbase", "binance", "bybit"])).min(1),
+  symbols: z.array(z.string().regex(/^[A-Z]{2,10}\/[A-Z]{2,10}$/i)).min(1),
 });
 
 export default publicProcedure

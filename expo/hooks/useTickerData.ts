@@ -16,8 +16,10 @@ interface UseTickerDataResult {
   tickersByPair: Record<string, TickerData[]>;
   topOpportunities: ArbitrageOpportunity[];
   errors: TickerError[];
+  queryError: string | null;
   isFetching: boolean;
   isLoading: boolean;
+  isEnabled: boolean;
   refetch: () => void;
 }
 
@@ -36,10 +38,22 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
     [enabledPairs]
   );
 
-  const { data, isFetching, isLoading, refetch } = trpc.exchanges.ticker.useQuery(
+  const isEnabled = enabledExchanges.length > 0 && symbols.length > 0;
+
+  const { data, isFetching, isLoading, refetch, error: rawQueryError } = trpc.exchanges.ticker.useQuery(
     { exchanges: enabledExchanges, symbols },
-    { enabled: enabledExchanges.length > 0 && symbols.length > 0 }
+    { enabled: isEnabled }
   );
+
+  const queryError = useMemo(() => {
+    if (!isEnabled) return 'No exchanges or pairs enabled. Enable them in Settings.';
+    if (rawQueryError) {
+      const msg = rawQueryError instanceof Error ? rawQueryError.message : JSON.stringify(rawQueryError);
+      console.error('[useTickerData] Query error:', msg);
+      return `Failed to fetch market data: ${msg}`;
+    }
+    return null;
+  }, [isEnabled, rawQueryError]);
 
   const tickers: TickerData[] = useMemo(() => {
     if (!data?.results) return [];
@@ -82,5 +96,5 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
       }));
   }, [data]);
 
-  return { tickers, tickersByPair, topOpportunities, errors, isFetching, isLoading, refetch };
+  return { tickers, tickersByPair, topOpportunities, errors, queryError, isFetching, isLoading, isEnabled, refetch };
 }

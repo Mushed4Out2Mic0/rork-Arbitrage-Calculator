@@ -17,7 +17,7 @@ export default function TradingScreen() {
   const { theme } = useTheme();
   const { tradeMode, switchMode, paperState, executePaperArbitrage, resetPaperTrading } = useTrading();
   const { configs } = useExchange();
-  const { tickers, topOpportunities, isFetching, isLoading, refetch } = useTickerData(5);
+  const { tickers, topOpportunities, isFetching, isLoading, queryError, isEnabled, refetch } = useTickerData(5);
 
   const executeTradeEndpoint = trpc.exchanges.execute.useMutation();
 
@@ -148,9 +148,24 @@ export default function TradingScreen() {
             </View>
           )}
         </View>
-        {topOpportunities.length === 0 ? (
+
+        {queryError && tickers.length === 0 && (
+          <View style={[styles.emptyCard, { backgroundColor: theme.errorLight, borderColor: theme.error }]}>
+            <AlertTriangle size={18} color={theme.error} />
+            <Text style={[styles.emptyText, { color: theme.errorDark, marginTop: 6 }]}>{queryError}</Text>
+          </View>
+        )}
+
+        {!isEnabled && (
+          <View style={[styles.emptyCard, { backgroundColor: theme.warningLight, borderColor: theme.warning }]}>
+            <AlertTriangle size={18} color={theme.warning} />
+            <Text style={[styles.emptyText, { color: theme.warningDark, marginTop: 6 }]}>Enable exchanges and pairs in Settings to see opportunities.</Text>
+          </View>
+        )}
+
+        {isEnabled && !queryError && topOpportunities.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.emptyText, { color: theme.textTertiary }]}>No profitable opportunities right now.</Text>
+            <Text style={[styles.emptyText, { color: theme.textTertiary }]}>{isLoading ? 'Loading market data...' : 'No profitable opportunities right now.'}</Text>
           </View>
         ) : (
           topOpportunities.map((opp, i) => (

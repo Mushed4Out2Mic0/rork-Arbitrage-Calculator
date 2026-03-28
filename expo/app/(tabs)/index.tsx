@@ -13,7 +13,7 @@ export default function MarketScreen() {
   const { globalMode, getEnabledCryptoPairs } = useExchange();
   const { theme } = useTheme();
   const enabledPairs = getEnabledCryptoPairs();
-  const { tickers, tickersByPair, topOpportunities, errors, isFetching, isLoading, refetch } = useTickerData(5);
+  const { tickers, tickersByPair, topOpportunities, errors, queryError, isFetching, isLoading, isEnabled, refetch } = useTickerData(5);
 
   return (
     <>
@@ -58,10 +58,32 @@ export default function MarketScreen() {
           )}
         </View>
 
-        {isLoading && tickers.length === 0 ? (
+        {!isEnabled ? (
+          <View style={styles.loadingBox}>
+            <AlertCircle size={32} color={theme.warning} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Data Sources</Text>
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+              Enable exchanges and crypto pairs in Settings to see live market data.
+            </Text>
+          </View>
+        ) : queryError && tickers.length === 0 ? (
+          <View style={styles.loadingBox}>
+            <AlertCircle size={32} color={theme.error} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>Connection Error</Text>
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>{queryError}</Text>
+          </View>
+        ) : isLoading && tickers.length === 0 ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={theme.tint} />
             <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading market data...</Text>
+          </View>
+        ) : tickers.length === 0 && !isFetching ? (
+          <View style={styles.loadingBox}>
+            <AlertCircle size={32} color={theme.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Market Data</Text>
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+              Pull down to refresh, or check your exchange settings.
+            </Text>
           </View>
         ) : (
           <>
@@ -139,7 +161,8 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   chipText: { fontSize: 11, fontWeight: '700' as const, color: '#FFF', letterSpacing: 0.5 },
   loadingBox: { alignItems: 'center', paddingVertical: 50 },
-  loadingText: { marginTop: 14, fontSize: 13 },
+  loadingText: { marginTop: 14, fontSize: 13, textAlign: 'center' as const, lineHeight: 19, paddingHorizontal: 20 },
+  emptyTitle: { marginTop: 12, fontSize: 17, fontWeight: '700' as const },
   pairSection: { marginBottom: 20 },
   pairHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 },
   pairTitle: { fontSize: 20, fontWeight: '700' as const },

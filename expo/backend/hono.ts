@@ -17,9 +17,9 @@ app.use(
 );
 
 app.use(
-  "/api/trpc/*",
+  "/trpc/*",
   trpcServer({
-    endpoint: "/api/trpc",
+    endpoint: "/trpc",
     router: appRouter,
     createContext,
   })

@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Switch, RefreshControl } from 'react-native';
 import { Stack } from 'expo-router';
-import { Zap, RotateCcw, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react-native';
+import { Zap, RotateCcw, Clock, CheckCircle, XCircle, AlertTriangle, Activity } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTrading } from '@/contexts/TradingContext';
 import { useExchange } from '@/contexts/ExchangeContext';
@@ -10,12 +10,14 @@ import { useMemo, useCallback } from 'react';
 import { ExchangeName } from '@/types/exchanges';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
+import { LivePriceTicker } from '@/components/trading/LivePriceTicker';
+import { PaperExecutionSimulator } from '@/components/trading/PaperExecutionSimulator';
 
 export default function TradingScreen() {
   const { theme } = useTheme();
   const { tradeMode, switchMode, paperState, executePaperArbitrage, resetPaperTrading } = useTrading();
   const { configs } = useExchange();
-  const { topOpportunities } = useTickerData(5);
+  const { tickers, topOpportunities, isFetching, isLoading, refetch } = useTickerData(5);
 
   const executeTradeEndpoint = trpc.exchanges.execute.useMutation();
 
@@ -45,7 +47,16 @@ export default function TradingScreen() {
     if (tradeMode === 'paper') {
       const result = executePaperArbitrage(opp.buyExchange, opp.sellExchange, opp.symbol, opp.tradeAmount, opp.buyPrice, opp.sellPrice);
       if (result.status === 'complete') {
-        Alert.alert('Paper Trade Executed', `Buy ${opp.buyExchange.toUpperCase()} → Sell ${opp.sellExchange.toUpperCase()}\nNet P&L: $${result.netProfit.toFixed(2)}`);
+        Alert.alert(
+          'Paper Trade Executed',
+          `${opp.symbol} • ${opp.tradeAmount} units\n` +
+          `Buy ${opp.buyExchange.toUpperCase()} @ ${opp.buyPrice.toFixed(2)}\n` +
+          `Sell ${opp.sellExchange.toUpperCase()} @ ${opp.sellPrice.toFixed(2)}\n` +
+          `Gross: ${result.grossProfit.toFixed(4)}\n` +
+          `Fees: ${result.totalFees.toFixed(4)}\n` +
+          `Net P&L: ${result.netProfit.toFixed(4)}\n` +
+          `Executed at live prices`
+        );
       } else {
         Alert.alert('Trade Failed', result.buyOrder.errorMessage || result.sellOrder.errorMessage || 'Unknown error');
       }
@@ -77,12 +88,18 @@ export default function TradingScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Trading' }} />
-      <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} />}
+      >
         <View style={styles.header}>
           <Zap size={28} color={theme.warning} strokeWidth={2.5} />
           <Text style={[styles.title, { color: theme.text }]}>Trading</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Execute arbitrage opportunities</Text>
         </View>
+
+        <LivePriceTicker tickers={tickers} isFetching={isFetching} />
 
         <View style={[styles.modeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.modeRow}>
@@ -118,7 +135,19 @@ export default function TradingScreen() {
           </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Opportunities</Text>
+        {tradeMode === 'paper' && topOpportunities.length > 0 && (
+          <PaperExecutionSimulator opportunities={topOpportunities} isFetching={isFetching} />
+        )}
+
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Opportunities</Text>
+          {isFetching && (
+            <View style={styles.fetchingIndicator}>
+              <Activity size={12} color={theme.tint} />
+              <Text style={[styles.fetchingText, { color: theme.tint }]}>Live</Text>
+            </View>
+          )}
+        </View>
         {topOpportunities.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.emptyText, { color: theme.textTertiary }]}>No profitable opportunities right now.</Text>
@@ -142,7 +171,13 @@ export default function TradingScreen() {
               <View style={styles.oppMetrics}>
                 <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Buy at</Text><Text style={[styles.metricVal, { color: theme.text }]}>${opp.buyPrice.toFixed(2)}</Text></View>
                 <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Sell at</Text><Text style={[styles.metricVal, { color: theme.text }]}>${opp.sellPrice.toFixed(2)}</Text></View>
-                <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Net Profit</Text><Text style={[styles.metricVal, { color: theme.successDark, fontWeight: '700' as const }]}>${opp.netProfit.toFixed(2)}</Text></View>
+                <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Spread</Text><Text style={[styles.metricVal, { color: theme.tint }]}>{opp.percentDeviation.toFixed(3)}%</Text></View>
+                <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Fees</Text><Text style={[styles.metricVal, { color: theme.error }]}>${opp.totalCost.toFixed(4)}</Text></View>
+                <View style={styles.metricRow}><Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Net Profit</Text><Text style={[styles.metricVal, { color: theme.successDark, fontWeight: '700' as const }]}>${opp.netProfit.toFixed(4)}</Text></View>
+                <View style={[styles.liveTag, { backgroundColor: theme.success + '15' }]}>
+                  <View style={[styles.liveDotSmall, { backgroundColor: theme.success }]} />
+                  <Text style={[styles.liveTagText, { color: theme.success }]}>Live price @ {new Date().toLocaleTimeString()}</Text>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -187,10 +222,30 @@ export default function TradingScreen() {
                       <Text style={[styles.execTimeText, { color: theme.textTertiary }]}>{new Date(exec.timestamp).toLocaleTimeString()}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.execDesc, { color: theme.textSecondary }]}>{exec.buyOrder.exchange.toUpperCase()} → {exec.sellOrder.exchange.toUpperCase()} • {exec.symbol}</Text>
+                  <Text style={[styles.execDesc, { color: theme.textSecondary }]}>
+                    {exec.buyOrder.exchange.toUpperCase()} → {exec.sellOrder.exchange.toUpperCase()} • {exec.symbol}
+                  </Text>
+                  <View style={[styles.execPriceRow, { borderColor: theme.borderLight }]}>
+                    <View style={styles.execPriceCol}>
+                      <Text style={[styles.execPriceLabel, { color: theme.textTertiary }]}>Buy</Text>
+                      <Text style={[styles.execPriceVal, { color: theme.success }]}>${exec.buyOrder.price.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.execPriceCol}>
+                      <Text style={[styles.execPriceLabel, { color: theme.textTertiary }]}>Sell</Text>
+                      <Text style={[styles.execPriceVal, { color: theme.error }]}>${exec.sellOrder.price.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.execPriceCol}>
+                      <Text style={[styles.execPriceLabel, { color: theme.textTertiary }]}>Gross</Text>
+                      <Text style={[styles.execPriceVal, { color: theme.text }]}>${exec.grossProfit.toFixed(4)}</Text>
+                    </View>
+                  </View>
                   <View style={styles.execBottom}>
                     <Text style={[styles.execPnl, { color: exec.netProfit >= 0 ? theme.successDark : theme.errorDark }]}>{exec.netProfit >= 0 ? '+' : ''}${exec.netProfit.toFixed(4)}</Text>
                     <Text style={[styles.execFees, { color: theme.textTertiary }]}>Fees: ${exec.totalFees.toFixed(4)}</Text>
+                  </View>
+                  <View style={[styles.liveTag, { backgroundColor: theme.tint + '10' }]}>
+                    <View style={[styles.liveDotSmall, { backgroundColor: theme.tint }]} />
+                    <Text style={[styles.liveTagText, { color: theme.tint }]}>Executed at live market prices</Text>
                   </View>
                 </View>
               ))
@@ -265,6 +320,11 @@ const styles = StyleSheet.create({
   metricVal: { fontSize: 13, fontWeight: '600' as const },
   execBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
   execBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#FFF' },
+  fetchingIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  fetchingText: { fontSize: 10, fontWeight: '600' as const },
+  liveTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, marginTop: 6 },
+  liveDotSmall: { width: 5, height: 5, borderRadius: 3 },
+  liveTagText: { fontSize: 9, fontWeight: '600' as const },
   execCard: { borderRadius: 10, padding: 12, marginBottom: 8, borderLeftWidth: 3, borderWidth: 1 },
   execHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   execStatus: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -275,6 +335,10 @@ const styles = StyleSheet.create({
   execBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   execPnl: { fontSize: 15, fontWeight: '700' as const },
   execFees: { fontSize: 10 },
+  execPriceRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 6, marginBottom: 6, borderTopWidth: 1, borderBottomWidth: 1 },
+  execPriceCol: { alignItems: 'center' },
+  execPriceLabel: { fontSize: 9, fontWeight: '600' as const, letterSpacing: 0.3, marginBottom: 2 },
+  execPriceVal: { fontSize: 12, fontWeight: '700' as const },
   tradeRow: { borderRadius: 10, padding: 10, marginBottom: 6, borderLeftWidth: 3, borderWidth: 1 },
   tradeHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   tradeSide: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },

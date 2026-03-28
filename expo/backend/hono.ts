@@ -17,15 +17,15 @@ app.use(
 );
 
 app.use(
-  "/trpc/*",
+  "/api/trpc/*",
   trpcServer({
-    endpoint: "/trpc",
+    endpoint: "/api/trpc",
     router: appRouter,
     createContext,
   })
 );
 
-app.route("/opportunities", oppRouter);
+app.route("/api/opportunities", oppRouter);
 
 app.get("/", (c) => {
   return c.json({ status: "ok", message: "API is running" });

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { trpc } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
 import { TickerData, ExchangeName } from '@/types/exchanges';
 import { useExchange } from '@/contexts/ExchangeContext';
 import { findTopArbitrageOpportunities, ArbitrageOpportunity } from '@/utils/arbitrage';
+import { fetchTickersDirect, DirectTickerResult } from '@/services/directTickerFetcher';
 
 interface TickerError {
   key: string;
@@ -40,10 +41,18 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
 
   const isEnabled = enabledExchanges.length > 0 && symbols.length > 0;
 
-  const { data, isFetching, isLoading, refetch, error: rawQueryError } = trpc.exchanges.ticker.useQuery(
-    { exchanges: enabledExchanges, symbols },
-    { enabled: isEnabled }
-  );
+  const { data, isFetching, isLoading, refetch, error: rawQueryError } = useQuery({
+    queryKey: ['ticker-data', enabledExchanges, symbols],
+    queryFn: async () => {
+      console.log(`[useTickerData] Fetching direct: exchanges=[${enabledExchanges.join(',')}] symbols=[${symbols.join(',')}]`);
+      const result = await fetchTickersDirect(enabledExchanges, symbols);
+      console.log(`[useTickerData] Got ${result.results.length} results`);
+      return result;
+    },
+    enabled: isEnabled,
+    refetchInterval: 5000,
+    staleTime: 2000,
+  });
 
   const queryError = useMemo(() => {
     if (!isEnabled) return 'No exchanges or pairs enabled. Enable them in Settings.';
@@ -58,15 +67,15 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
   const tickers: TickerData[] = useMemo(() => {
     if (!data?.results) return [];
     return data.results
-      .filter((r: Record<string, unknown>) => !r.error)
-      .map((r: Record<string, unknown>) => ({
+      .filter((r: DirectTickerResult) => !r.error)
+      .map((r: DirectTickerResult) => ({
         exchange: r.exchange as ExchangeName,
-        symbol: r.symbol as string,
+        symbol: r.symbol,
         bidPrice: String(r.bid),
         askPrice: String(r.ask),
         bidQty: '0',
         askQty: '0',
-        timestamp: r.ts as number,
+        timestamp: r.ts,
       }));
   }, [data]);
 
@@ -87,12 +96,12 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
   const errors: TickerError[] = useMemo(() => {
     if (!data?.results) return [];
     return data.results
-      .filter((r: Record<string, unknown>) => r.error)
-      .map((r: Record<string, unknown>, idx: number) => ({
-        key: `error-${String(r.exchange)}-${String(r.symbol)}-${idx}`,
-        exchange: r.exchange as string,
-        symbol: r.symbol as string,
-        message: r.error as string,
+      .filter((r: DirectTickerResult) => r.error)
+      .map((r: DirectTickerResult, idx: number) => ({
+        key: `error-${r.exchange}-${r.symbol}-${idx}`,
+        exchange: r.exchange,
+        symbol: r.symbol,
+        message: r.error ?? 'Unknown error',
       }));
   }, [data]);
 

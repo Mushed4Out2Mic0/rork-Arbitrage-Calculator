@@ -4,6 +4,7 @@ import { TickerData, ExchangeName } from '@/types/exchanges';
 import { useExchange } from '@/contexts/ExchangeContext';
 import { findTopArbitrageOpportunities, ArbitrageOpportunity } from '@/utils/arbitrage';
 import { fetchTickersDirect, DirectTickerResult } from '@/services/directTickerFetcher';
+import { trpc } from '@/lib/trpc';
 
 interface TickerError {
   key: string;
@@ -24,8 +25,29 @@ interface UseTickerDataResult {
   refetch: () => void;
 }
 
+async function fetchViaTrpc(
+  trpcUtils: ReturnType<typeof trpc.useUtils>,
+  exchanges: ExchangeName[],
+  symbols: string[]
+): Promise<{ results: DirectTickerResult[] }> {
+  console.log(`[useTickerData] Trying tRPC backend...`);
+  const data = await trpcUtils.exchanges.ticker.fetch({ exchanges, symbols });
+  console.log(`[useTickerData] tRPC returned ${data.results?.length ?? 0} results`);
+  return {
+    results: (data.results ?? []).map((r: Record<string, unknown>) => ({
+      exchange: r.exchange as ExchangeName,
+      symbol: r.symbol as string,
+      bid: Number(r.bid ?? 0),
+      ask: Number(r.ask ?? 0),
+      ts: Number(r.ts ?? Date.now()),
+      error: r.error as string | undefined,
+    })),
+  };
+}
+
 export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult {
   const { getEnabledConfigs, getEnabledCryptoPairs } = useExchange();
+  const trpcUtils = trpc.useUtils();
   const enabledConfigs = getEnabledConfigs();
   const enabledPairs = getEnabledCryptoPairs();
 
@@ -44,9 +66,21 @@ export function useTickerData(opportunityLimit: number = 5): UseTickerDataResult
   const { data, isFetching, isLoading, refetch, error: rawQueryError } = useQuery({
     queryKey: ['ticker-data', enabledExchanges, symbols],
     queryFn: async () => {
-      console.log(`[useTickerData] Fetching direct: exchanges=[${enabledExchanges.join(',')}] symbols=[${symbols.join(',')}]`);
+      console.log(`[useTickerData] Fetching: exchanges=[${enabledExchanges.join(',')}] symbols=[${symbols.join(',')}]`);
+
+      try {
+        const result = await fetchViaTrpc(trpcUtils, enabledExchanges, symbols);
+        if (result.results.length > 0 && result.results.some((r) => !r.error)) {
+          console.log(`[useTickerData] tRPC success: ${result.results.length} results`);
+          return result;
+        }
+        throw new Error('tRPC returned no valid results');
+      } catch (trpcErr) {
+        console.warn(`[useTickerData] tRPC failed, falling back to direct fetch:`, trpcErr);
+      }
+
       const result = await fetchTickersDirect(enabledExchanges, symbols);
-      console.log(`[useTickerData] Got ${result.results.length} results`);
+      console.log(`[useTickerData] Direct fetch: ${result.results.length} results`);
       return result;
     },
     enabled: isEnabled,

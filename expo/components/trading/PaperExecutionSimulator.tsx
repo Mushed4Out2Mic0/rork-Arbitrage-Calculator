@@ -119,7 +119,7 @@ export const PaperExecutionSimulator = React.memo(function PaperExecutionSimulat
             {
               backgroundColor: sim.executable ? theme.successLight : theme.surfaceSecondary,
               borderColor: sim.executable ? theme.success : theme.border,
-              opacity: Animated.add(flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.7] }), 0),
+              opacity: flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.7] }),
             },
           ]}
         >

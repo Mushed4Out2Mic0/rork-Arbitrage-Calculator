@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { ExchangeName } from '@/types/exchanges';
 
 export interface DirectTickerResult {
@@ -25,6 +26,36 @@ async function fetchWithTimeout(url: string, timeoutMs: number = 10000, headers?
   }
 }
 
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+];
+
+async function fetchWithCorsProxy(url: string, timeoutMs: number = 10000, headers?: Record<string, string>): Promise<Response> {
+  if (Platform.OS !== 'web') {
+    return fetchWithTimeout(url, timeoutMs, headers);
+  }
+
+  try {
+    const res = await fetchWithTimeout(url, timeoutMs, headers);
+    if (res.ok) return res;
+  } catch {
+    console.log(`[DirectFetch] Direct failed on web, trying CORS proxy for ${url}`);
+  }
+
+  for (const proxy of CORS_PROXIES) {
+    try {
+      const proxyUrl = `${proxy}${encodeURIComponent(url)}`;
+      const res = await fetchWithTimeout(proxyUrl, timeoutMs);
+      if (res.ok) return res;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error('All CORS proxy attempts failed');
+}
+
 async function fetchKraken(symbol: string): Promise<DirectTickerResult> {
   const { base, quote } = parseSymbol(symbol);
   const m = (s: string) => (s === 'BTC' ? 'XBT' : s);
@@ -32,9 +63,7 @@ async function fetchKraken(symbol: string): Promise<DirectTickerResult> {
   const url = `https://api.kraken.com/0/public/Ticker?pair=${pair}`;
 
   console.log(`[DirectFetch][Kraken] Fetching ${pair}`);
-  const res = await fetchWithTimeout(url);
-  if (!res.ok) throw new Error(`kraken_http_${res.status}`);
-
+  const res = await fetchWithCorsProxy(url);
   const json = await res.json();
   if (json.error?.length) throw new Error(`kraken_api_${json.error[0]}`);
 
@@ -52,9 +81,7 @@ async function fetchCoinbase(symbol: string): Promise<DirectTickerResult> {
   const url = `https://api.exchange.coinbase.com/products/${prod}/ticker`;
 
   console.log(`[DirectFetch][Coinbase] Fetching ${prod}`);
-  const res = await fetchWithTimeout(url, 10000, { 'User-Agent': 'arb-app/1.0' });
-  if (!res.ok) throw new Error(`coinbase_http_${res.status}`);
-
+  const res = await fetchWithCorsProxy(url, 10000);
   const j = await res.json();
   const ask = parseFloat(j.ask);
   const bid = parseFloat(j.bid);
@@ -69,9 +96,7 @@ async function fetchBinance(symbol: string): Promise<DirectTickerResult> {
   const url = `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${s}`;
 
   console.log(`[DirectFetch][Binance] Fetching ${s}`);
-  const res = await fetchWithTimeout(url);
-  if (!res.ok) throw new Error(`binance_http_${res.status}`);
-
+  const res = await fetchWithCorsProxy(url);
   const j = await res.json();
   const bid = parseFloat(j.bidPrice);
   const ask = parseFloat(j.askPrice);
@@ -86,9 +111,7 @@ async function fetchBybit(symbol: string): Promise<DirectTickerResult> {
   const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${s}`;
 
   console.log(`[DirectFetch][Bybit] Fetching ${s}`);
-  const res = await fetchWithTimeout(url);
-  if (!res.ok) throw new Error(`bybit_http_${res.status}`);
-
+  const res = await fetchWithCorsProxy(url);
   const j = await res.json();
   const d = j.result?.list?.[0];
   const bid = parseFloat(d?.bid1Price ?? '0');
